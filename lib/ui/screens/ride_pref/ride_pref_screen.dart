@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:week_3_blabla_project/ui/providers/async_value.dart';
 
 import '../../../model/ride/ride_pref.dart';
 import '../../theme/theme.dart';
@@ -19,7 +20,8 @@ const String blablaHomeImagePath = 'assets/images/blabla_home.png';
 class RidePrefScreen extends StatelessWidget {
   const RidePrefScreen({super.key});
 
-  void onRidePrefSelected(BuildContext context, RidePreference newPreference) async {
+  void onRidePrefSelected(
+      BuildContext context, RidePreference newPreference) async {
     // 1 - Update the current preference using the provider
     final provider = context.read<RidesPreferencesProvider>();
     provider.setCurrentPreference(newPreference);
@@ -31,17 +33,33 @@ class RidePrefScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the RidesPreferencesProvider for changes
     final provider = context.watch<RidesPreferencesProvider>();
     final currentRidePreference = provider.currentPreference;
     final pastPreferences = provider.pastPreferences;
 
+    Widget buildPastPreferences() {
+      if (pastPreferences.state == AsyncValueState.loading) {
+        return const Center(child: CircularProgressIndicator());
+      } else if (pastPreferences.state == AsyncValueState.error) {
+        return Center(child: Text('Error: ${pastPreferences.error}'));
+      } else if (pastPreferences.state == AsyncValueState.success) {
+        final preferences = pastPreferences.data!;
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const AlwaysScrollableScrollPhysics(),
+          itemCount: preferences.length,
+          itemBuilder: (ctx, index) => RidePrefHistoryTile(
+            ridePref: preferences[index],
+            onPressed: () => onRidePrefSelected(context, preferences[index]),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
+
     return Stack(
       children: [
-        // 1 - Background Image
         const BlaBackground(),
-
-        // 2 - Foreground content
         Column(
           children: [
             const SizedBox(height: BlaSpacings.m),
@@ -53,33 +71,19 @@ class RidePrefScreen extends StatelessWidget {
             Container(
               margin: const EdgeInsets.symmetric(horizontal: BlaSpacings.xxl),
               decoration: BoxDecoration(
-                color: Colors.white, // White background
-                borderRadius: BorderRadius.circular(16), // Rounded corners
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 2.1 Display the Form to input the ride preferences
                   RidePrefForm(
                     initialPreference: currentRidePreference,
-                    onSubmit: (preference) => onRidePrefSelected(context, preference),
+                    onSubmit: (preference) =>
+                        onRidePrefSelected(context, preference),
                   ),
                   const SizedBox(height: BlaSpacings.m),
-
-                  // 2.2 Optionally display a list of past preferences
-                  SizedBox(
-                    height: 200, // Set a fixed height
-                    child: ListView.builder(
-                      shrinkWrap: true, // Fix ListView height issue
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: pastPreferences.length,
-                      itemBuilder: (ctx, index) => RidePrefHistoryTile(
-                        ridePref: pastPreferences[index],
-                        onPressed: () => onRidePrefSelected(context, pastPreferences[index]),
-                      ),
-                    ),
-                  ),
+                  SizedBox(height: 200, child: buildPastPreferences()),
                 ],
               ),
             ),
