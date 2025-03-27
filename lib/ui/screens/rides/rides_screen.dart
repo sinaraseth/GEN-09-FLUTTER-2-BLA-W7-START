@@ -1,44 +1,31 @@
 import 'package:flutter/material.dart';
-import '../../../model/ride/ride_filter.dart';
-import 'widgets/ride_pref_bar.dart';
-import '../../../service/ride_prefs_service.dart';
+import 'package:provider/provider.dart';
 
+import '../../../model/ride/ride_filter.dart';
 import '../../../model/ride/ride.dart';
 import '../../../model/ride/ride_pref.dart';
 import '../../../service/rides_service.dart';
 import '../../theme/theme.dart';
 import '../../../utils/animations_util.dart';
+import '../../providers/rides_preferences_provider.dart';
+import 'widgets/ride_pref_bar.dart';
 import 'widgets/ride_pref_modal.dart';
 import 'widgets/rides_tile.dart';
 
 ///
-///  The Ride Selection screen allow user to select a ride, once ride preferences have been defined.
-///  The screen also allow user to re-define the ride preferences and to activate some filters.
+/// The Ride Selection screen allows the user to select a ride, once ride preferences have been defined.
+/// The screen also allows the user to re-define the ride preferences and activate some filters.
 ///
-class RidesScreen extends StatefulWidget {
+class RidesScreen extends StatelessWidget {
   const RidesScreen({super.key});
 
-  @override
-  State<RidesScreen> createState() => _RidesScreenState();
-}
-
-class _RidesScreenState extends State<RidesScreen> {
-  RidePreference get currentPreference =>
-      RidePrefService.instance.currentPreference!;
-
-  RideFilter currentFilter = RideFilter();
-
-  List<Ride> get matchingRides =>
-      RidesService.instance.getRidesFor(currentPreference, currentFilter);
-
-  void onBackPressed() {
-    // 1 - Back to the previous view
-    Navigator.of(context).pop();
+  void onRidePrefSelected(BuildContext context, RidePreference newPreference) async {
+    // 1 - Update the current preference using the provider
+    final provider = context.read<RidesPreferencesProvider>();
+    provider.setCurrentPreference(newPreference);
   }
 
-  onRidePrefSelected(RidePreference newPreference) async {}
-
-  void onPreferencePressed() async {
+  void onPreferencePressed(BuildContext context, RidePreference currentPreference) async {
     // Open a modal to edit the ride preferences
     RidePreference? newPreference = await Navigator.of(
       context,
@@ -49,18 +36,27 @@ class _RidesScreenState extends State<RidesScreen> {
     );
 
     if (newPreference != null) {
-      // 1 - Update the current preference
-      RidePrefService.instance.setCurrentPreference(newPreference);
-
-      // 2 -   Update the state   -- TODO MAKE IT WITH STATE MANAGEMENT
-      setState(() {});
+      // 1 - Update the current preference using the provider
+      final provider = context.read<RidesPreferencesProvider>();
+      provider.setCurrentPreference(newPreference);
     }
   }
 
-  void onFilterPressed() {}
+  void onFilterPressed() {
+    // TODO: Implement filter functionality
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Watch the RidesPreferencesProvider for changes
+    final provider = context.watch<RidesPreferencesProvider>();
+    final currentPreference = provider.currentPreference;
+
+    // Get the list of available rides based on the current preference
+    final matchingRides = currentPreference != null
+        ? RidesService.instance.getRidesFor(currentPreference, RideFilter())
+        : [];
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.only(
@@ -70,11 +66,11 @@ class _RidesScreenState extends State<RidesScreen> {
         ),
         child: Column(
           children: [
-            // Top search Search bar
+            // Top search bar
             RidePrefBar(
-              ridePreference: currentPreference,
-              onBackPressed: onBackPressed,
-              onPreferencePressed: onPreferencePressed,
+              ridePreference: currentPreference!,
+              onBackPressed: () => Navigator.of(context).pop(),
+              onPreferencePressed: () => onPreferencePressed(context, currentPreference),
               onFilterPressed: onFilterPressed,
             ),
 
