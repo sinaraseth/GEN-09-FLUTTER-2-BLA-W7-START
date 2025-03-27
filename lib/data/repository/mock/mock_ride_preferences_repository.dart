@@ -1,4 +1,4 @@
-import '../../model/ride/ride_pref.dart';
+import '../../../model/ride/ride_pref.dart';
 import '../ride_preferences_repository.dart';
 
 class MockRidePreferencesRepository implements RidePreferencesRepository {
